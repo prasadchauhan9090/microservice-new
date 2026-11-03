@@ -1,5 +1,6 @@
 package com.chauhan.in.orderservice.service;
 
+import com.chauhan.in.orderservice.dto.InventoryResponse;
 import com.chauhan.in.orderservice.dto.OrderLineItemsDto;
 import com.chauhan.in.orderservice.dto.OrderLineItemsDto;
 import com.chauhan.in.orderservice.dto.OrderRequest;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,13 +50,16 @@ OrderService {
                 .toList();
 
         //call inventory service and place order if product is in stock
-        Boolean result = webClient.get().uri("http://localhost:8082/api/inventory",
+        InventoryResponse[] inventoryResponsArray= webClient.get().uri("http://localhost:8082/api/inventory",
                         uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
                 .retrieve()
-                .bodyToMono(Boolean.class)
+                .bodyToMono(InventoryResponse[].class)
                 .block();
 
-        if(result)
+       boolean allProductsInStock = Arrays.stream(inventoryResponsArray)
+               .allMatch(InventoryResponse::isInStock);
+
+        if(allProductsInStock)
         {
             orderRepository.save(order);
         }
@@ -67,13 +72,21 @@ OrderService {
 
     }
 
-    private OrderLineItems mapToDto(OrderLineItemsDto orderLineItemDto) {
-
+   /* private OrderLineItems mapToDto(OrderLineItemsDto orderLineItemDto) {
         OrderLineItems orderLineItems = new OrderLineItems();
+
         orderLineItems.setPrice(orderLineItems.getPrice());
         orderLineItems.setQuantity(orderLineItems.getQuantity());
         orderLineItems.setSkuCode(orderLineItems.getSkuCode());
-        return orderLineItems;
+        return orderLineItems; */
+
+        private OrderLineItems mapToDto(OrderLineItemsDto orderLineItemDto) {
+            OrderLineItems orderLineItems = new OrderLineItems();
+            // FIXED: Use orderLineItemDto instead of orderLineItems
+            orderLineItems.setPrice(orderLineItemDto.getPrice());
+            orderLineItems.setQuantity(orderLineItemDto.getQuantity());
+            orderLineItems.setSkuCode(orderLineItemDto.getSkuCode());
+            return orderLineItems;
 
     }
 }
